@@ -245,7 +245,7 @@ const Home = () => {
       {/* Footer */}
       <div className="mt-12 pt-6 border-t border-white/5 flex flex-col md:flex-row items-center justify-between text-xs text-slate-500">
         <div>
-          <span className="font-bold text-slate-300">AdmissionAI</span> - © 2024 AdmissionAI. Advanced College Intelligence.
+          <span className="font-bold text-slate-300">Agentro</span> - © 2024 Agentro. Advanced College Intelligence.
         </div>
         <div className="flex gap-4 mt-4 md:mt-0">
           <a href="#" className="hover:text-slate-300">Privacy Policy</a>

@@ -37,7 +37,7 @@ const SidebarLayout = () => {
               <GraduationCap size={20} className="text-white" />
             </div>
             <div>
-              <h1 className="font-bold text-lg leading-tight">AdmissionAI</h1>
+              <h1 className="font-bold text-lg leading-tight">Agentro</h1>
               <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Premium Assistant</p>
             </div>
           </div>

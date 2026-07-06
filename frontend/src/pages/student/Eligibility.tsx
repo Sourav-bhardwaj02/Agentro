@@ -12,7 +12,7 @@ const Eligibility = () => {
       {/* Header (Standalone page) */}
       <header className="absolute top-0 left-0 w-full p-6 flex justify-between items-center z-10">
         <Link to="/dashboard" className="font-bold text-lg leading-tight">
-          AdmissionAI
+          Agentro
         </Link>
         <Link to="/dashboard" className="text-sm text-slate-400 hover:text-white transition-colors">
           Exit
@@ -108,7 +108,7 @@ const Eligibility = () => {
       
       {/* Footer minimal */}
       <footer className="w-full p-6 text-xs text-slate-500 flex justify-between z-10 absolute bottom-0">
-        <div>© 2024 AdmissionAI. Advanced College Intelligence.</div>
+        <div>© 2024 Agentro. Advanced College Intelligence.</div>
         <div className="flex gap-6">
           <a href="#" className="hover:text-slate-300">Privacy Policy</a>
           <a href="#" className="hover:text-slate-300">Terms of Service</a>
