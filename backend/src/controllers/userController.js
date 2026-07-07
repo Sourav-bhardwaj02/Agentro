@@ -17,7 +17,7 @@ const getProfile = async (req, res, next) => {
 // @access Private
 const updateProfile = async (req, res, next) => {
   try {
-    const allowedFields = ['name', 'avatar', 'gpa', 'satScore', 'actScore', 'targetMajors', 'targetColleges'];
+    const allowedFields = ['name', 'avatar', 'gpa', 'satScore', 'actScore', 'tenthMarks', 'twelfthMarks', 'otherDocuments', 'targetMajors', 'targetColleges'];
     const updates = {};
     allowedFields.forEach((field) => {
       if (req.body[field] !== undefined) updates[field] = req.body[field];

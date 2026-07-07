@@ -34,6 +34,9 @@ const userSchema = new mongoose.Schema(
     gpa: { type: Number, default: null },
     satScore: { type: Number, default: null },
     actScore: { type: Number, default: null },
+    tenthMarks: { type: String, default: '' },
+    twelfthMarks: { type: String, default: '' },
+    otherDocuments: { type: String, default: '' },
     targetMajors: [{ type: String }],
     targetColleges: [{ type: String }],
     // Progress

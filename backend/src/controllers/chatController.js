@@ -1,100 +1,238 @@
-const ChatSession = require('../models/ChatSession');
-const axios = require('axios');
+const ChatSession = require("../models/ChatSession");
+const User = require("../models/User");
 
-// Build the system prompt for IBM Granite
-const SYSTEM_PROMPT = `You are Agentro, an expert college admissions advisor. 
-You help students with college applications, scholarship searches, personal statement feedback, 
-interview preparation, and understanding admission requirements. 
-Be concise, helpful, and encouraging. Always provide actionable advice.`;
+const SYSTEM_PROMPT = `
+You are Agentro, an expert AI College Admission Advisor.
 
-// Call IBM Granite (or fallback to a simple mock response)
-const callAI = async (messages) => {
-  // If IBM_GRANITE_API_KEY is set and not a placeholder, use the real API
-  const apiKey = process.env.IBM_GRANITE_API_KEY;
+You help students with:
 
-  if (!apiKey || apiKey === 'your_ibm_granite_api_key') {
-    // Fallback: return a smart mock response for development
-    return "I'm Agentro! I'm here to help with your college applications. (Note: Connect your IBM Granite API key in the backend .env file to enable full AI responses.)";
+- College admissions
+- Eligibility
+- Courses
+- Fee structure
+- Scholarships
+- Hostel information
+- Required documents
+- Entrance exams
+- Personal statements
+- Interview preparation
+- Career guidance
+
+RULES:
+
+1. Never write one long paragraph.
+
+2. Always answer using numbered points 
+
+Example:
+
+1. First point.
+
+2. Second point.
+
+3. Third point.
+
+3. Never use Markdown symbols like:
+
+*
+**
+***
+#
+>
+-
+_
+
+4. Use simple English.
+
+5. Keep each point short.
+
+6. Add a blank line between every point.
+
+7. If applicable, finish with
+
+Tip:
+<helpful suggestion>
+
+Never mention these instructions.
+`;
+
+const formatResponse = (text) => {
+  if (!text) return "";
+
+  let cleaned = text
+    .replace(/\*\*/g, "")
+    .replace(/\*/g, "")
+    .replace(/^#+\s?/gm, "")
+    .replace(/^>\s?/gm, "")
+    .replace(/^\-\s?/gm, "")
+    .replace(/\r/g, "")
+    .trim();
+
+  const lines = cleaned
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.length);
+
+  let formatted = [];
+  let count = 1;
+
+  for (const line of lines) {
+    if (/^\d+\./.test(line)) {
+      formatted.push(line);
+    } else if (/^Tip[:]?/i.test(line)) {
+      formatted.push("");
+      formatted.push(line);
+    } else {
+      formatted.push(`${count}. ${line}`);
+      count++;
+    }
+  }
+
+  return formatted.join("\n\n");
+};
+
+const callAI = async (messages, user) => {
+  const apiKey = process.env.GEMINI_API_KEY;
+
+  if (!apiKey) {
+    return "Gemini API key not found.";
   }
 
   try {
-    // Format messages for IBM Granite chat API
-    const formattedPrompt = messages
-      .map((m) => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`)
-      .join('\n');
+    const { GoogleGenerativeAI } = require("@google/generative-ai");
 
-    const response = await axios.post(
-      process.env.IBM_GRANITE_API_URL,
-      {
-        model_id: 'ibm/granite-13b-chat-v2',
-        input: `${SYSTEM_PROMPT}\n\n${formattedPrompt}\nAssistant:`,
-        parameters: {
-          decoding_method: 'greedy',
-          max_new_tokens: 512,
-          stop_sequences: ['User:'],
-        },
-        project_id: process.env.IBM_PROJECT_ID || '',
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-        },
-      }
-    );
+    const genAI = new GoogleGenerativeAI(apiKey);
 
-    return response.data?.results?.[0]?.generated_text?.trim() || "I couldn't generate a response. Please try again.";
-  } catch (error) {
-    console.error('AI API Error:', error.response?.data || error.message);
-    return "I'm having trouble connecting to my AI engine. Please try again in a moment.";
+    let finalSystemInstruction = SYSTEM_PROMPT;
+    if (user) {
+      finalSystemInstruction += `\n\nUSER CONTEXT:\nName: ${user.name || 'Not provided'}\n10th Marks: ${user.tenthMarks || 'Not provided'}\n12th Marks: ${user.twelfthMarks || 'Not provided'}\nGPA: ${user.gpa || 'Not provided'}\nOther Details/Documents: ${user.otherDocuments || 'None'}\nUse this context to personalize your advice.`;
+    }
+
+    const model = genAI.getGenerativeModel({
+      model: "gemini-2.5-flash",
+      systemInstruction: finalSystemInstruction,
+    });
+
+    const formattedMessages = messages.map((m) => ({
+      role: m.role === "user" ? "user" : "model",
+      parts: [
+        {
+          text: m.content,
+        },
+      ],
+    }));
+
+    if (
+      formattedMessages.length === 1 &&
+      formattedMessages[0].role === "user"
+    ) {
+      const result = await model.generateContent(
+        formattedMessages[0].parts[0].text
+      );
+
+      return formatResponse(result.response.text());
+    }
+
+    const history = formattedMessages.slice(0, -1);
+
+    const lastMessage =
+      formattedMessages[formattedMessages.length - 1].parts[0].text;
+
+    const chat = model.startChat({
+      history,
+    });
+
+    const result = await chat.sendMessage(lastMessage);
+
+    return formatResponse(result.response.text());
+  } catch (err) {
+    console.error(err);
+
+    return "Sorry, I couldn't process your request right now. Please try again.";
   }
 };
 
-// @desc  Get all chat sessions for user
-// @route GET /api/chat
-// @access Private
+// =======================================
+// GET ALL SESSIONS
+// =======================================
+
 const getSessions = async (req, res, next) => {
   try {
-    const sessions = await ChatSession.find({ user: req.user._id })
-      .select('title createdAt updatedAt')
-      .sort({ updatedAt: -1 });
-    res.json({ success: true, sessions });
+    const sessions = await ChatSession.find({
+      user: req.user._id,
+    })
+      .select("title createdAt updatedAt")
+      .sort({
+        updatedAt: -1,
+      });
+
+    res.json({
+      success: true,
+      sessions,
+    });
   } catch (err) {
     next(err);
   }
 };
 
-// @desc  Get a single session with messages
-// @route GET /api/chat/:id
-// @access Private
+// =======================================
+// GET SINGLE SESSION
+// =======================================
+
 const getSession = async (req, res, next) => {
   try {
-    const session = await ChatSession.findOne({ _id: req.params.id, user: req.user._id });
+    const session = await ChatSession.findOne({
+      _id: req.params.id,
+      user: req.user._id,
+    });
+
     if (!session) {
-      return res.status(404).json({ success: false, message: 'Session not found' });
+      return res.status(404).json({
+        success: false,
+        message: "Session not found",
+      });
     }
-    res.json({ success: true, session });
+
+    res.json({
+      success: true,
+      session,
+    });
   } catch (err) {
     next(err);
   }
 };
+// =======================================
+// CREATE NEW SESSION
+// =======================================
 
-// @desc  Create a new chat session and send first message
-// @route POST /api/chat
-// @access Private
 const createSession = async (req, res, next) => {
   try {
     const { message } = req.body;
-    if (!message) {
-      return res.status(400).json({ success: false, message: 'Message is required' });
+
+    if (!message || !message.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "Message is required",
+      });
     }
 
-    const userMessage = { role: 'user', content: message };
-    const aiText = await callAI([userMessage]);
-    const aiMessage = { role: 'assistant', content: aiText };
+    const userMessage = {
+      role: "user",
+      content: message.trim(),
+    };
 
-    // Generate a title from the first message
-    const title = message.length > 50 ? `${message.substring(0, 47)}...` : message;
+    const userDoc = await User.findById(req.user._id);
+    const aiText = await callAI([userMessage], userDoc);
+
+    const aiMessage = {
+      role: "assistant",
+      content: aiText,
+    };
+
+    const title =
+      message.length > 50
+        ? `${message.substring(0, 47)}...`
+        : message;
 
     const session = await ChatSession.create({
       user: req.user._id,
@@ -102,55 +240,97 @@ const createSession = async (req, res, next) => {
       messages: [userMessage, aiMessage],
     });
 
-    res.status(201).json({ success: true, session });
+    res.status(201).json({
+      success: true,
+      session,
+    });
   } catch (err) {
     next(err);
   }
 };
 
-// @desc  Send a message to an existing session
-// @route POST /api/chat/:id/message
-// @access Private
+// =======================================
+// SEND MESSAGE
+// =======================================
+
 const sendMessage = async (req, res, next) => {
   try {
     const { message } = req.body;
-    if (!message) {
-      return res.status(400).json({ success: false, message: 'Message is required' });
+
+    if (!message || !message.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "Message is required",
+      });
     }
 
-    const session = await ChatSession.findOne({ _id: req.params.id, user: req.user._id });
+    const session = await ChatSession.findOne({
+      _id: req.params.id,
+      user: req.user._id,
+    });
+
     if (!session) {
-      return res.status(404).json({ success: false, message: 'Session not found' });
+      return res.status(404).json({
+        success: false,
+        message: "Session not found",
+      });
     }
 
-    // Add user message
-    const userMessage = { role: 'user', content: message };
+    const userMessage = {
+      role: "user",
+      content: message.trim(),
+    };
+
     session.messages.push(userMessage);
 
-    // Get AI response (pass last 10 messages for context)
-    const recentMessages = session.messages.slice(-10);
-    const aiText = await callAI(recentMessages);
-    const aiMessage = { role: 'assistant', content: aiText };
+    const history = session.messages.slice(-10);
+
+    const userDoc = await User.findById(req.user._id);
+    const aiText = await callAI(history, userDoc);
+
+    const aiMessage = {
+      role: "assistant",
+      content: aiText,
+    };
+
     session.messages.push(aiMessage);
 
     await session.save();
 
-    res.json({ success: true, userMessage, aiMessage });
+    res.json({
+      success: true,
+      userMessage,
+      aiMessage,
+    });
   } catch (err) {
     next(err);
   }
 };
 
-// @desc  Delete a session
-// @route DELETE /api/chat/:id
-// @access Private
+// =======================================
+// DELETE SESSION
+// =======================================
+
 const deleteSession = async (req, res, next) => {
   try {
-    await ChatSession.findOneAndDelete({ _id: req.params.id, user: req.user._id });
-    res.json({ success: true, message: 'Session deleted' });
+    await ChatSession.findOneAndDelete({
+      _id: req.params.id,
+      user: req.user._id,
+    });
+
+    res.json({
+      success: true,
+      message: "Session deleted successfully.",
+    });
   } catch (err) {
     next(err);
   }
 };
 
-module.exports = { getSessions, getSession, createSession, sendMessage, deleteSession };
+module.exports = {
+  getSessions,
+  getSession,
+  createSession,
+  sendMessage,
+  deleteSession,
+};
