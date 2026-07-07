@@ -14,14 +14,17 @@ import {
   Plus
 } from 'lucide-react';
 
+import { useAuthStore } from '../../store/authStore';
+
 const SidebarLayout = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { user, logout } = useAuthStore();
 
   const navItems = [
     { name: 'Overview', path: '/dashboard', icon: LayoutDashboard },
     { name: 'AI Advisor', path: '/chat', icon: Sparkles },
-    { name: 'Applications', path: '/eligibility', icon: FileText }, // Assuming eligibility is linked to apps or check eligibility
+    { name: 'Applications', path: '/eligibility', icon: FileText },
     { name: 'Scholarships', path: '/scholarships', icon: GraduationCap },
     { name: 'Documents', path: '/documents', icon: FolderOpen },
     { name: 'Analytics', path: '/analytics', icon: BarChart2 },
@@ -70,11 +73,11 @@ const SidebarLayout = () => {
           </button>
           
           <div className="space-y-1">
-            <Link to="/settings" className="flex items-center gap-3 px-4 py-2 rounded-lg text-sm text-slate-400 hover:text-white hover:bg-white/5 transition-colors">
+            <Link to="/profile" className="flex items-center gap-3 px-4 py-2 rounded-lg text-sm text-slate-400 hover:text-white hover:bg-white/5 transition-colors">
               <Settings size={18} />
               Settings
             </Link>
-            <button className="w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm text-slate-400 hover:text-white hover:bg-white/5 transition-colors text-left">
+            <button onClick={() => logout()} className="w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm text-slate-400 hover:text-white hover:bg-white/5 transition-colors text-left">
               <LogOut size={18} />
               Logout
             </button>
@@ -99,16 +102,16 @@ const SidebarLayout = () => {
               <Bell size={20} />
               <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full border border-[#090C15]"></span>
             </button>
-            <button className="text-slate-400 hover:text-white transition-colors">
+            <Link to="/profile" className="text-slate-400 hover:text-white transition-colors">
               <Settings size={20} />
-            </button>
+            </Link>
             <div className="flex items-center gap-3 pl-4 border-l border-white/10">
               <img 
-                src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80" 
+                src={user?.avatar || "https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80"} 
                 alt="Profile" 
                 className="w-8 h-8 rounded-full object-cover"
               />
-              <span className="text-sm font-medium">Alex Rivers</span>
+              <span className="text-sm font-medium">{user?.name || 'Student'}</span>
             </div>
           </div>
         </header>
