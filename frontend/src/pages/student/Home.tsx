@@ -1,8 +1,100 @@
 import React from 'react';
 import { Sparkles, Calendar, Heart, GraduationCap, Clock, CheckCircle2, TrendingUp, History, Link as LinkIcon, Download, Globe, Star, Send, MessageCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 
 const Home = () => {
+  const token = localStorage.getItem('token');
+
+  // Fetch student profile details
+  const { data: profileData } = useQuery({
+    queryKey: ['userProfile'],
+    queryFn: async () => {
+      const response = await fetch('/api/users/profile', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      if (!response.ok) throw new Error('Failed to fetch profile');
+      return response.json();
+    },
+    enabled: !!token,
+  });
+
+  const user = profileData?.user;
+
+  // Fetch colleges list for recommendations
+  const { data: collegesData, isLoading: collegesLoading } = useQuery({
+    queryKey: ['recommendedColleges'],
+    queryFn: async () => {
+      const response = await fetch('/api/colleges', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      if (!response.ok) throw new Error('Failed to fetch colleges');
+      return response.json();
+    },
+    enabled: !!token,
+  });
+
+  const colleges = collegesData?.colleges || [];
+
+  // College recommendation scoring
+  const recommendedColleges = React.useMemo(() => {
+    if (!colleges || colleges.length === 0) return [];
+
+    // Sort colleges by Rating descending
+    let sortedColleges = [...colleges].sort((a, b) => (b.Rating || 0) - (a.Rating || 0));
+
+    // If user has target majors, prioritize matching streams
+    const targetMajors = user?.targetMajors || [];
+    if (targetMajors.length > 0) {
+      const majorKeywords = targetMajors.map(m => m.toLowerCase());
+
+      sortedColleges.sort((a, b) => {
+        const aStream = a.Stream?.toLowerCase() || '';
+        const bStream = b.Stream?.toLowerCase() || '';
+
+        const aMatches = majorKeywords.some(kw => aStream.includes(kw));
+        const bMatches = majorKeywords.some(kw => bStream.includes(kw));
+
+        if (aMatches && !bMatches) return -1;
+        if (!aMatches && bMatches) return 1;
+        return 0;
+      });
+    }
+
+    return sortedColleges.slice(0, 3);
+  }, [colleges, user]);
+
+  const getCollegeImage = (stream: string) => {
+    const streamLower = stream?.toLowerCase() || '';
+    if (streamLower.includes('engineering') || streamLower.includes('tech')) {
+      return 'https://images.unsplash.com/photo-1562774053-701939374585?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80';
+    }
+    if (streamLower.includes('medical') || streamLower.includes('health') || streamLower.includes('dental')) {
+      return 'https://images.unsplash.com/photo-1584515901407-d8f4689320ca?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80';
+    }
+    if (streamLower.includes('arts') || streamLower.includes('humanities')) {
+      return 'https://images.unsplash.com/photo-1558025213-31745421df6d?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80';
+    }
+    if (streamLower.includes('science')) {
+      return 'https://images.unsplash.com/photo-1564325724739-bae0bd08762c?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80';
+    }
+    if (streamLower.includes('commerce') || streamLower.includes('management') || streamLower.includes('business')) {
+      return 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80';
+    }
+    return 'https://images.unsplash.com/photo-1541339907198-e08756dedf3f?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80';
+  };
+
+  const getRatingColor = (rating: number): string => {
+    if (rating >= 9) return 'text-emerald-400';
+    if (rating >= 8) return 'text-cyan-400';
+    if (rating >= 7) return 'text-yellow-400';
+    return 'text-slate-400';
+  };
+
   return (
     <div className="space-y-8 pb-12 relative">
       {/* Top Section - Welcome & Profile */}
@@ -10,17 +102,17 @@ const Home = () => {
         <div className="lg:col-span-2 glass-card rounded-2xl p-8 flex flex-col justify-center relative overflow-hidden group">
           <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 to-purple-500/5 opacity-50 transition-opacity group-hover:opacity-100"></div>
           <div className="relative z-10">
-            <h1 className="text-4xl font-bold text-white mb-4">Welcome back, Alex.</h1>
+            <h1 className="text-4xl font-bold text-white mb-4">Welcome back, {user?.name || 'Alex'}.</h1>
             <p className="text-slate-300 text-lg mb-8 max-w-xl">
-              Your application to <span className="text-white font-semibold">Stanford University</span> is 85% complete. 2 tasks require your attention this week.
+              Your application progress is <span className="text-white font-semibold">{user?.applicationProgress || 85}%</span> complete. 2 tasks require your attention this week.
             </p>
             <div className="flex gap-4">
-              <button className="bg-[#A5B4FC] hover:bg-[#93A5F8] text-slate-900 font-semibold py-3 px-6 rounded-xl transition-colors">
-                Resume Application
-              </button>
-              <button className="bg-white/5 hover:bg-white/10 text-white font-medium py-3 px-6 rounded-xl transition-colors border border-white/10">
-                View Progress
-              </button>
+              <Link to="/chat" className="bg-[#A5B4FC] hover:bg-[#93A5F8] text-slate-900 font-semibold py-3 px-6 rounded-xl transition-colors flex items-center gap-2">
+                Ask AI Advisor
+              </Link>
+              <Link to="/profile" className="bg-white/5 hover:bg-white/10 text-white font-medium py-3 px-6 rounded-xl transition-colors border border-white/10 flex items-center gap-2">
+                View Profile
+              </Link>
             </div>
           </div>
         </div>
@@ -33,17 +125,17 @@ const Home = () => {
             </div>
           </div>
           <div className="mb-6">
-            <div className="text-sm text-slate-400 mb-1">GPA: <span className="text-3xl font-bold text-white ml-2">3.96</span></div>
+            <div className="text-sm text-slate-400 mb-1">GPA: <span className="text-3xl font-bold text-white ml-2">{user?.gpa || '3.96'}</span></div>
           </div>
-          
+
           <div className="space-y-4">
             <div>
               <div className="flex justify-between text-sm mb-2">
                 <span className="text-slate-400">SAT Score</span>
-                <span className="text-white font-medium">1540 / 1600</span>
+                <span className="text-white font-medium">{user?.satScore || '1540'} / 1600</span>
               </div>
               <div className="h-2 w-full bg-slate-800 rounded-full overflow-hidden">
-                <div className="h-full bg-indigo-500 w-[96%]"></div>
+                <div className="h-full bg-indigo-500" style={{ width: `${((user?.satScore || 1540) / 1600) * 100}%` }}></div>
               </div>
             </div>
             <div>
@@ -56,9 +148,9 @@ const Home = () => {
               </div>
             </div>
           </div>
-          
+
           <div className="mt-8 text-center border-t border-white/10 pt-4">
-            <button className="text-sm text-indigo-400 hover:text-indigo-300 font-medium">Update Transcripts</button>
+            <Link to="/profile" className="text-sm text-indigo-400 hover:text-indigo-300 font-medium">Update Profile details</Link>
           </div>
         </div>
       </div>
@@ -75,7 +167,7 @@ const Home = () => {
               <div className="w-1.5 h-1.5 rounded-full bg-emerald-400"></div> Online
             </span>
           </div>
-          
+
           <div className="flex-1 bg-black/20 rounded-xl p-4 mb-4 space-y-4">
             <div className="flex gap-3">
               <div className="w-8 h-8 rounded-full bg-indigo-500/20 flex-shrink-0 flex items-center justify-center">
@@ -92,11 +184,11 @@ const Home = () => {
               </div>
             </div>
           </div>
-          
+
           <div className="relative">
-            <input 
-              type="text" 
-              placeholder="Ask anything about your applications..." 
+            <input
+              type="text"
+              placeholder="Ask anything about your applications..."
               className="w-full bg-white/5 border border-white/10 rounded-xl py-3.5 pl-4 pr-16 text-sm text-white focus:outline-none focus:border-indigo-500/50 transition-colors"
             />
             <button className="absolute right-2 top-2 bottom-2 bg-[#A5B4FC] hover:bg-[#93A5F8] text-slate-900 rounded-lg w-10 flex items-center justify-center transition-colors">
@@ -165,40 +257,54 @@ const Home = () => {
       <div>
         <div className="mb-4">
           <h3 className="text-xl font-bold text-white">Recommended for You</h3>
-          <p className="text-sm text-slate-400">AI-curated based on your interests, GPA, and extracurricular activity.</p>
+          <p className="text-sm text-slate-400">AI-curated based on your interests, GPA, and academic stream.</p>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {[
-            { name: 'Stanford University', loc: 'Palo Alto, California', img: 'https://images.unsplash.com/photo-1590483866164-9fb6784d5dfd?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80', match: '98%', tags: ['Computer Science', 'AI Focus'] },
-            { name: 'Harvard University', loc: 'Cambridge, Massachusetts', img: 'https://images.unsplash.com/photo-1558025213-31745421df6d?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80', match: '92%', tags: ['Mathematics', 'Liberal Arts'] },
-            { name: 'MIT', loc: 'Cambridge, Massachusetts', img: 'https://images.unsplash.com/photo-1564325724739-bae0bd08762c?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80', match: '91%', tags: ['Robotics', 'Engineering'] }
-          ].map((college, i) => (
-            <div key={i} className="glass-card rounded-2xl overflow-hidden group">
-              <div className="h-40 relative">
-                <img src={college.img} alt={college.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 to-transparent"></div>
-                <div className="absolute bottom-3 left-3 bg-indigo-500 text-white text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1">
-                  <Sparkles size={12} /> {college.match} Match
+        {collegesLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {[1, 2, 3].map((n) => (
+              <div key={n} className="glass-card rounded-2xl overflow-hidden h-[320px] animate-pulse bg-white/5"></div>
+            ))}
+          </div>
+        ) : recommendedColleges.length === 0 ? (
+          <div className="glass-card p-8 rounded-xl text-center">
+            <p className="text-slate-400">No college recommendations available right now. Please complete your profile details.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {recommendedColleges.map((college, i) => {
+              const matchPercent = Math.round(college.Rating * 10);
+              return (
+                <div key={i} className="glass-card rounded-2xl overflow-hidden group flex flex-col justify-between">
+                  <div>
+                    <div className="h-40 relative">
+                      <img src={getCollegeImage(college.Stream)} alt={college.College_Name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 to-transparent"></div>
+                      <div className="absolute bottom-3 left-3 bg-indigo-500 text-white text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1">
+                        <Sparkles size={12} /> {matchPercent}% Match
+                      </div>
+                      <button className="absolute bottom-3 right-3 w-8 h-8 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white hover:bg-white/20 transition-colors">
+                        <Heart size={14} />
+                      </button>
+                    </div>
+                    <div className="p-5 pb-2">
+                      <h4 className="font-bold text-lg text-white mb-1 line-clamp-1">{college.College_Name}</h4>
+                      <p className="text-xs text-slate-400 mb-4">{college.State}</p>
+                      <div className="flex gap-2 mb-4 flex-wrap">
+                        <span className="text-[10px] bg-white/5 border border-white/10 text-slate-300 px-2.5 py-1 rounded-full">{college.Stream}</span>
+                        <span className="text-[10px] bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-2.5 py-1 rounded-full">Placement: {college.Placement}/10</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="p-5 pt-0">
+                    <Link to="/courses" className="block text-center w-full py-2 bg-transparent border border-white/10 hover:bg-white/5 text-white text-sm font-medium rounded-xl transition-colors">
+                      Explore Program
+                    </Link>
+                  </div>
                 </div>
-                <button className="absolute bottom-3 right-3 w-8 h-8 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white hover:bg-white/20 transition-colors">
-                  <Heart size={14} />
-                </button>
-              </div>
-              <div className="p-5">
-                <h4 className="font-bold text-lg text-white mb-1">{college.name}</h4>
-                <p className="text-xs text-slate-400 mb-4">{college.loc}</p>
-                <div className="flex gap-2 mb-6">
-                  {college.tags.map(tag => (
-                    <span key={tag} className="text-[10px] bg-white/5 border border-white/10 text-slate-300 px-2.5 py-1 rounded-full">{tag}</span>
-                  ))}
-                </div>
-                <button className="w-full py-2 bg-transparent border border-white/10 hover:bg-white/5 text-white text-sm font-medium rounded-xl transition-colors">
-                  Explore Program
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Available Scholarships */}
@@ -222,7 +328,7 @@ const Home = () => {
               </div>
               <h4 className="font-bold text-white mb-2">{schol.name}</h4>
               <p className="text-sm text-slate-400 mb-6 h-10">{schol.desc}</p>
-              
+
               <div className="flex justify-between text-xs text-slate-300 mb-6 border-t border-white/10 pt-4">
                 <div>
                   <span className="block text-slate-500 mb-1">Deadline:</span>
@@ -233,7 +339,7 @@ const Home = () => {
                   <span className="font-medium text-white">{schol.elig}</span>
                 </div>
               </div>
-              
+
               <button className="w-full py-2.5 bg-cyan-400 hover:bg-cyan-300 text-slate-900 font-semibold rounded-xl transition-colors border-none">
                 Apply Now
               </button>
@@ -241,7 +347,7 @@ const Home = () => {
           ))}
         </div>
       </div>
-      
+
       {/* Footer */}
       <div className="mt-12 pt-6 border-t border-white/5 flex flex-col md:flex-row items-center justify-between text-xs text-slate-500">
         <div>

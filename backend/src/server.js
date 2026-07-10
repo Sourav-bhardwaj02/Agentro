@@ -14,6 +14,8 @@ const userRoutes = require('./routes/userRoutes');
 const applicationRoutes = require('./routes/applicationRoutes');
 const scholarshipRoutes = require('./routes/scholarshipRoutes');
 const chatRoutes = require('./routes/chatRoutes');
+const collegeRoutes = require('./routes/collegeRoutes');
+const uploadRoutes = require('./routes/uploadRoutes');
 
 // Connect to MongoDB
 connectDB();
@@ -46,10 +48,12 @@ app.use('/api/users', userRoutes);
 app.use('/api/applications', applicationRoutes);
 app.use('/api/scholarships', scholarshipRoutes);
 app.use('/api/chat', chatRoutes);
+app.use('/api/colleges', collegeRoutes);
+app.use('/api/upload', uploadRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
-  res.json({ success: true, message: 'Agentro Backend is running 🚀', timestamp: new Date() });
+  res.json({ success: true, message: 'AdmitWise Backend is running 🚀', timestamp: new Date() });
 });
 
 // 404 handler

@@ -16,7 +16,7 @@ const Chat = () => {
   const handleSend = async (e?: React.FormEvent) => {
     e?.preventDefault();
     if (!input.trim() || isTyping) return;
-    
+
     const text = input;
     setInput('');
     await sendMessage(text);
@@ -28,7 +28,7 @@ const Chat = () => {
 
   return (
     <div className="flex flex-col h-[calc(100vh-80px)] max-w-4xl mx-auto pb-4">
-      
+
       {/* Header title */}
       <div className="flex items-center gap-3 mb-8">
         <h1 className="text-2xl font-bold text-white">Advisor Portal</h1>
@@ -57,8 +57,8 @@ const Chat = () => {
                 { icon: FileSignature, title: "Review my personal statement.", desc: "Get AI feedback on your draft." },
                 { icon: Map, title: "Recommend liberal arts colleges.", desc: "Curated list based on your profile." }
               ].map((item, i) => (
-                <button 
-                  key={i} 
+                <button
+                  key={i}
                   onClick={() => handleSuggestion(item.title)}
                   className="glass-card bg-slate-900/40 hover:bg-slate-900/60 transition-colors p-5 rounded-2xl border border-white/10 text-left group"
                 >
@@ -78,12 +78,11 @@ const Chat = () => {
                     <Sparkles size={14} className="text-indigo-400" />
                   </div>
                 )}
-                
-                <div className={`px-5 py-3 rounded-2xl max-w-[80%] text-sm leading-relaxed ${
-                  msg.role === 'user' 
-                    ? 'bg-primary text-primary-foreground rounded-tr-sm' 
+
+                <div className={`px-5 py-3 rounded-2xl max-w-[80%] text-sm leading-relaxed ${msg.role === 'user'
+                    ? 'bg-primary text-primary-foreground rounded-tr-sm'
                     : 'glass-card bg-white/5 border border-white/10 text-slate-200 rounded-tl-sm'
-                }`}>
+                  }`}>
                   {msg.content}
                 </div>
 
@@ -94,7 +93,7 @@ const Chat = () => {
                 )}
               </div>
             ))}
-            
+
             {isTyping && (
               <div className="flex gap-4 justify-start">
                 <div className="w-8 h-8 rounded-full bg-indigo-500/20 border border-indigo-500/50 flex items-center justify-center shrink-0">
@@ -120,15 +119,15 @@ const Chat = () => {
           <button type="button" className="p-3 text-slate-400 hover:text-white transition-colors rounded-xl hover:bg-white/5">
             <Mic size={20} />
           </button>
-          <input 
-            type="text" 
+          <input
+            type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             disabled={isTyping}
-            placeholder="Type a message or ask for advice..." 
+            placeholder="Type a message or ask for advice..."
             className="flex-1 bg-transparent border-none text-white focus:outline-none focus:ring-0 text-sm py-3 px-2 placeholder:text-slate-500"
           />
-          <button 
+          <button
             type="submit"
             disabled={!input.trim() || isTyping}
             className="p-3 bg-indigo-500/20 text-indigo-400 hover:bg-indigo-500/30 transition-colors rounded-xl border border-indigo-500/30 disabled:opacity-50"

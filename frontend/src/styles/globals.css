@@ -27,8 +27,8 @@
   }
 
   .dark {
-    /* Background: #020617 (slate-950) -> HSL: 222.2 84% 4.9% */
-    --background: 222.2 84% 4.9%;
+    /* Background: #070b19 -> HSL: 227 56% 6% */
+    --background: 227 56% 6%;
     --foreground: 210 40% 98%;
     
     /* Card: glassmorphism effect will be built on this */

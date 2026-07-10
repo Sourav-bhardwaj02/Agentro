@@ -1,13 +1,13 @@
 import React from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
-import { 
-  LayoutDashboard, 
-  Sparkles, 
-  FileText, 
-  GraduationCap, 
-  FolderOpen, 
-  BarChart2, 
-  Settings, 
+import {
+  LayoutDashboard,
+  Sparkles,
+  FileText,
+  GraduationCap,
+  FolderOpen,
+  BarChart2,
+  Settings,
   LogOut,
   Bell,
   Search,
@@ -25,15 +25,15 @@ const SidebarLayout = () => {
     { name: 'Overview', path: '/dashboard', icon: LayoutDashboard },
     { name: 'AI Advisor', path: '/chat', icon: Sparkles },
     { name: 'Applications', path: '/eligibility', icon: FileText },
+    { name: 'Colleges', path: '/courses', icon: GraduationCap },
     { name: 'Scholarships', path: '/scholarships', icon: GraduationCap },
     { name: 'Documents', path: '/documents', icon: FolderOpen },
-    { name: 'Analytics', path: '/analytics', icon: BarChart2 },
   ];
 
   return (
-    <div className="flex h-screen bg-[#090C15] text-white font-sans overflow-hidden">
+    <div className="flex h-screen bg-[#070b19] text-white font-sans overflow-hidden">
       {/* Sidebar */}
-      <aside className="w-64 bg-[#0B0F19] border-r border-white/5 flex flex-col justify-between hidden md:flex">
+      <aside className="w-64 bg-black/20 backdrop-blur-xl border-r border-white/5 flex flex-col justify-between hidden md:flex z-20">
         <div>
           <div className="p-6 pb-8 flex items-center gap-3">
             <div className="w-8 h-8 rounded bg-primary flex items-center justify-center">
@@ -52,11 +52,10 @@ const SidebarLayout = () => {
                 <Link
                   key={item.name}
                   to={item.path}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm transition-colors ${
-                    isActive 
-                      ? 'bg-white/10 text-white font-medium' 
-                      : 'text-slate-400 hover:text-white hover:bg-white/5'
-                  }`}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm transition-colors ${isActive
+                    ? 'bg-white/10 text-white font-medium'
+                    : 'text-slate-400 hover:text-white hover:bg-white/5'
+                    }`}
                 >
                   <item.icon size={18} className={isActive ? 'text-white' : 'text-slate-400'} />
                   {item.name}
@@ -67,11 +66,11 @@ const SidebarLayout = () => {
         </div>
 
         <div className="p-4 space-y-4">
-          <button className="w-full bg-[#A5B4FC] hover:bg-[#93A5F8] text-slate-900 rounded-lg py-2.5 px-4 flex items-center justify-center gap-2 text-sm font-semibold transition-colors">
+          {/* <button className="w-full bg-[#A5B4FC] hover:bg-[#93A5F8] text-slate-900 rounded-lg py-2.5 px-4 flex items-center justify-center gap-2 text-sm font-semibold transition-colors">
             <Plus size={16} />
             New Application
-          </button>
-          
+          </button> */}
+
           <div className="space-y-1">
             <Link to="/profile" className="flex items-center gap-3 px-4 py-2 rounded-lg text-sm text-slate-400 hover:text-white hover:bg-white/5 transition-colors">
               <Settings size={18} />
@@ -86,14 +85,19 @@ const SidebarLayout = () => {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
+      <main className="flex-1 flex flex-col min-w-0 overflow-hidden relative z-10">
+        {/* Background Effects matching Landing page */}
+        <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-primary/20 rounded-full blur-[120px] -z-10 pointer-events-none" />
+        <div className="absolute bottom-1/4 right-1/4 w-[600px] h-[600px] bg-indigo-500/10 rounded-full blur-[150px] -z-10 pointer-events-none" />
+        <div className="absolute top-0 right-0 w-1/2 h-full bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-indigo-900/20 via-transparent to-transparent -z-10 pointer-events-none" />
+
         {/* Top Header */}
         <header className="h-20 px-8 flex items-center justify-between bg-transparent">
           <div className="relative w-96">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-            <input 
-              type="text" 
-              placeholder="Search scholarships, colleges..." 
+            <input
+              type="text"
+              placeholder="Search scholarships, colleges..."
               className="w-full bg-white/5 border border-white/10 rounded-full py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:border-white/20 text-white placeholder:text-slate-500"
             />
           </div>
@@ -106,9 +110,9 @@ const SidebarLayout = () => {
               <Settings size={20} />
             </Link>
             <div className="flex items-center gap-3 pl-4 border-l border-white/10">
-              <img 
-                src={user?.avatar || "https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80"} 
-                alt="Profile" 
+              <img
+                src={user?.avatar || "https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80"}
+                alt="Profile"
                 className="w-8 h-8 rounded-full object-cover"
               />
               <span className="text-sm font-medium">{user?.name || 'Student'}</span>

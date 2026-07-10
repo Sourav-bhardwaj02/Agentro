@@ -2,7 +2,7 @@ const ChatSession = require("../models/ChatSession");
 const User = require("../models/User");
 
 const SYSTEM_PROMPT = `
-You are Agentro, an expert AI College Admission Advisor.
+You are , an expert AI College Admission Advisor.
 
 You help students with:
 
@@ -91,16 +91,17 @@ const formatResponse = (text) => {
   return formatted.join("\n\n");
 };
 
-const callAI = async (messages, user) => {
+const callAI = async (messages, user, res) => {
   const apiKey = process.env.GEMINI_API_KEY;
 
   if (!apiKey) {
-    return "Gemini API key not found.";
+    const errorMsg = "Gemini API key not found.";
+    if (res) res.write(`data: ${JSON.stringify({ error: errorMsg })}\n\n`);
+    return errorMsg;
   }
 
   try {
     const { GoogleGenerativeAI } = require("@google/generative-ai");
-
     const genAI = new GoogleGenerativeAI(apiKey);
 
     let finalSystemInstruction = SYSTEM_PROMPT;
@@ -115,40 +116,38 @@ const callAI = async (messages, user) => {
 
     const formattedMessages = messages.map((m) => ({
       role: m.role === "user" ? "user" : "model",
-      parts: [
-        {
-          text: m.content,
-        },
-      ],
+      parts: [{ text: m.content }],
     }));
 
-    if (
-      formattedMessages.length === 1 &&
-      formattedMessages[0].role === "user"
-    ) {
-      const result = await model.generateContent(
-        formattedMessages[0].parts[0].text
-      );
+    let fullResponseText = "";
 
-      return formatResponse(result.response.text());
+    if (formattedMessages.length === 1 && formattedMessages[0].role === "user") {
+      const result = await model.generateContentStream(formattedMessages[0].parts[0].text);
+      for await (const chunk of result.stream) {
+        const chunkText = chunk.text();
+        fullResponseText += chunkText;
+        if (res) res.write(`data: ${JSON.stringify({ text: chunkText })}\n\n`);
+      }
+    } else {
+      const history = formattedMessages.slice(0, -1);
+      const lastMessage = formattedMessages[formattedMessages.length - 1].parts[0].text;
+      
+      const chat = model.startChat({ history });
+      const result = await chat.sendMessageStream(lastMessage);
+      
+      for await (const chunk of result.stream) {
+        const chunkText = chunk.text();
+        fullResponseText += chunkText;
+        if (res) res.write(`data: ${JSON.stringify({ text: chunkText })}\n\n`);
+      }
     }
 
-    const history = formattedMessages.slice(0, -1);
-
-    const lastMessage =
-      formattedMessages[formattedMessages.length - 1].parts[0].text;
-
-    const chat = model.startChat({
-      history,
-    });
-
-    const result = await chat.sendMessage(lastMessage);
-
-    return formatResponse(result.response.text());
+    return formatResponse(fullResponseText);
   } catch (err) {
     console.error(err);
-
-    return "Sorry, I couldn't process your request right now. Please try again.";
+    const errorMsg = "Sorry, I couldn't process your request right now. Please try again.";
+    if (res) res.write(`data: ${JSON.stringify({ error: errorMsg })}\n\n`);
+    return errorMsg;
   }
 };
 
@@ -216,13 +215,17 @@ const createSession = async (req, res, next) => {
       });
     }
 
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
+
     const userMessage = {
       role: "user",
       content: message.trim(),
     };
 
     const userDoc = await User.findById(req.user._id);
-    const aiText = await callAI([userMessage], userDoc);
+    const aiText = await callAI([userMessage], userDoc, res);
 
     const aiMessage = {
       role: "assistant",
@@ -240,12 +243,15 @@ const createSession = async (req, res, next) => {
       messages: [userMessage, aiMessage],
     });
 
-    res.status(201).json({
-      success: true,
-      session,
-    });
+    res.write(`data: ${JSON.stringify({ done: true, session })}\n\n`);
+    res.end();
   } catch (err) {
-    next(err);
+    if (!res.headersSent) {
+      next(err);
+    } else {
+      res.write(`data: ${JSON.stringify({ error: "Stream error occurred" })}\n\n`);
+      res.end();
+    }
   }
 };
 
@@ -276,17 +282,20 @@ const sendMessage = async (req, res, next) => {
       });
     }
 
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
+
     const userMessage = {
       role: "user",
       content: message.trim(),
     };
 
     session.messages.push(userMessage);
-
     const history = session.messages.slice(-10);
 
     const userDoc = await User.findById(req.user._id);
-    const aiText = await callAI(history, userDoc);
+    const aiText = await callAI(history, userDoc, res);
 
     const aiMessage = {
       role: "assistant",
@@ -294,16 +303,17 @@ const sendMessage = async (req, res, next) => {
     };
 
     session.messages.push(aiMessage);
-
     await session.save();
 
-    res.json({
-      success: true,
-      userMessage,
-      aiMessage,
-    });
+    res.write(`data: ${JSON.stringify({ done: true, userMessage, aiMessage })}\n\n`);
+    res.end();
   } catch (err) {
-    next(err);
+    if (!res.headersSent) {
+      next(err);
+    } else {
+      res.write(`data: ${JSON.stringify({ error: "Stream error occurred" })}\n\n`);
+      res.end();
+    }
   }
 };
 
